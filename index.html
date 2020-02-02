@@ -1,117 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="x-ua-compatible" content="ie=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <script>
-        function withKeyword(keyword) {
-          return function(line) {
-            console.log({"keyworkd": keyword, "line": line});
-            if (!keyword) return !!line;
-            return !!line && line.toLowerCase().indexOf(keyword) !== -1;
-          };
-        }
-        function createLinksCard(category, links) {
-          if (links.length <= 0) return "";
-          return '<div class="card"><div class="card-body"><h5 class="card-title">' 
-            + category + '</h5><ul style="list-style: none; padding-left: 0;">' + links.join("") + '</ul></div></div>';
-        }
-        function linkify(linkTextSelector, targetId) {
-            const text = $(linkTextSelector).text();
-            const search = $("#search").val().trim().toLowerCase();
-            const lines = text.split(/(\r\n|\n)+/);
-            const linkMap = {};
-            const content = lines.map(line => line.trim()).filter(withKeyword(search)).map(line => {
-              let tokens = line.match(/^\[(.+)\](.+)?$/);
-              if (!tokens || tokens.length < 3) return null; 
-              category = tokens[1].trim();
-              tokens = tokens[2].split("==>").map(x => x.trim()).filter(x => !!x);
-              if (tokens.length == 2) {
-                return [category, '<li><a href="' + tokens[1] +'">' + tokens[0] + '</a></li>'];
-              } else if (tokens.length == 3) {
-                return [category, '<li><a href="' + tokens[2] + '"><img style="max-height:2em;" src="' + tokens[1] + '" alt="image for "/>' + tokens[0] + '</a></li>']
-              }
-              return null;
-            }).filter(x => !!x);
-            console.log(content);
-            content.forEach(x => {
-              const category = x[0];
-              const code = x[1];
-              if (!linkMap[category]) {
-                linkMap[category] = [code];
-              } else {
-                linkMap[category].push(code);
-              }
-            });
-            const cards = Object.entries(linkMap).map(x => createLinksCard(x[0], x[1]));
-            $(targetId).html(cards.join(""));
-        }
-        function render() {
-          linkify("#links", "#links-container");
-        }
-    </script>
-    <title>🧙‍♂️ - Magic Dashboard</title>
-  </head>
 
-  <body>
-     <!-- 
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="x-ua-compatible" content="ie=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+  <script>
+    function withKeyword(keyword) {
+      return function (line) {
+        if (!keyword) return !!line;
+        return !!line && line.toLowerCase().indexOf(keyword) !== -1;
+      };
+    }
+    function sortByCategoryFirstChar(datumA, datumB) {
+      const a = datumA[0].charAt(0).toLowerCase().charCodeAt(0);
+      const b = datumB[0].charAt(0).toLowerCase().charCodeAt(0);
+      return a - b;
+    }
+    function createLinksCard(category, links) {
+      if (links.length <= 0) return "";
+      return '<div class="card"><div class="card-body"><h5 class="card-title">'
+        + category + '</h5><ul style="list-style: none; padding-left: 0;">' + links.join("") + '</ul></div></div>';
+    }
+    function renderLinks(linkTextSelector, targetId) {
+      const text = $(linkTextSelector).text();
+      const defaultHtml = $("#default-content").html();
+      const search = $("#search").val().trim().toLowerCase();
+      const lines = text.split(/(\r\n|\n)+/);
+      const linkMap = {};
+
+      // WHY:
+      // We search at this level so we can also search for categories :)
+      const content = lines.map(line => line.trim()).filter(withKeyword(search)).map(line => {
+        let tokens = line.match(/^\[(.+)\](.+)?$/);
+        if (!tokens || tokens.length < 3) return null;
+        category = tokens[1].trim();
+        tokens = tokens[2].split("==>").map(x => x.trim()).filter(x => !!x);
+        if (tokens.length == 2) {
+          return [category, '<li><a href="' + tokens[1] + '">' + tokens[0] + '</a></li>'];
+        } else if (tokens.length == 3) {
+          return [category, '<li><a href="' + tokens[2] +
+            '"><img style="max-height:2em;" src="' + tokens[1] + '" alt="image for "/>' + tokens[0] + '</a></li>']
+        }
+        return null;
+      }).filter(x => !!x);
+      
+      // Create category lists
+      content.forEach(x => {
+        const category = x[0];
+        const code = x[1];
+        if (!linkMap[category]) {
+          linkMap[category] = [code];
+        } else {
+          linkMap[category].push(code);
+        }
+      });
+      // WHY: Sort from categories
+      // Ref: https://stackoverflow.com/a/51169
+      const cardEntries = Object.entries(linkMap);
+      cardEntries.sort(sortByCategoryFirstChar);
+      const cards = cardEntries.map(x => createLinksCard(x[0], x[1]));
+      $(targetId).html(defaultHtml + cards.join(""));
+    }
+    function render() {
+      renderLinks("#links", "#links-container");
+    }
+  </script>
+  <title>🧙‍♂️ - Magic Dashboard</title>
+</head>
+
+<body>
+  <!-- 
+        .##.......####.##....##.##....##..######.
+        .##........##..###...##.##...##..##....##
+        .##........##..####..##.##..##...##......
+        .##........##..##.##.##.#####.....######.
+        .##........##..##..####.##..##.........##
+        .##........##..##...###.##...##..##....##
+        .########.####.##....##.##....##..######.
+
         Edit below div tag content with links
         Link:
         [Search] 🦆Duck Duck Go ==> https://duckduckgo.com/
         Image:
         [Tool] Link With Image ==> https://example.com/image.svg ==> https://example.com 
-     -->
-     <div id="links" style="display: none;">
-      [Search] 🦆Duck Duck Go ==> https://duckduckgo.com/
-      [Search] Google ==> https://www.google.com/
-      [Programming] GitHub ==> https://github.com 
-      [ABC] GitHub ==> https://github.com 
-      [ABC] GitHub ==> https://github.com 
-      [XYZ] GitHub ==> https://github.com 
-      [XYZ] GitHub ==> https://github.com 
-      [XYZ] GitHub ==> https://github.com 
-      [123] GitHub ==> https://github.com 
-      [dfsdf] GitHub ==> https://github.com 
-      [afadfZ] GitHub ==> https://github.com 
-      [ABC1] GitHub ==> https://github.com 
-      [ABC4] GitHub ==> https://github.com 
-      [XYZ2] GitHub ==> https://github.com 
-      [XYZ5] GitHub ==> https://github.com 
-      [XYZ6] GitHub ==> https://github.com 
-      [1237] GitHub ==> https://github.com 
-      [dfsdf8] GitHub ==> https://github.com 
-      [afadyfZ] GitHub ==> https://github.com 
-    </div>
-    <!-- ^^ Add your links to above -->
-     <nav class="navbar navbar-dark bg-dark">
-      <a class="navbar-brand" href="#">
-        🧙‍♂️ Magic Dashbard
-      </a>
-      <form class="form-inline my-2 my-lg-0">
-        <input class="form-control mr-sm-2" type="search" placeholder="Search" id="search" />
-      </form>
-    </nav>
-    <div  class="container-fluid">
-      <div class="card-columns" id="links-container" style="margin-top: 10px;">
+  -->
 
-        </div>
+  <div id="links" style="display: none;">
+    [Search] 🦆Duck Duck Go ==> https://duckduckgo.com/
+    [Search] Google ==> https://www.google.com/
+    [Programming] GitHub ==> https://github.com
+    [A] GitHub ==> https://github.com
+    [B] GitHub ==> https://github.com
+    [C] GitHub ==> https://github.com
+    [D] GitHub ==> https://github.com
+    [A] GitHub ==> https://github.com
+    [B] GitHub ==> https://github.com
+    [C] GitHub ==> https://github.com
+    [D] GitHub ==> https://github.com
+    [E] GitHub ==> https://github.com
+    [F] GitHub ==> https://github.com
+    [G] GitHub ==> https://github.com
+    [A] GitHub ==> https://github.com
+    [H] GitHub ==> https://github.com
+    [G] GitHub ==> https://github.com
+    [I] GitHub ==> https://github.com
+    [I] GitHub ==> https://github.com
+  </div>
+  <!-- ^^ Add your links to above -->
+  <!-- 
+    .########..########.########....###....##.....##.##.......########
+    .##.....##.##.......##.........##.##...##.....##.##..........##...
+    .##.....##.##.......##........##...##..##.....##.##..........##...
+    .##.....##.######...######...##.....##.##.....##.##..........##...
+    .##.....##.##.......##.......#########.##.....##.##..........##...
+    .##.....##.##.......##.......##.....##.##.....##.##..........##...
+    .########..########.##.......##.....##..#######..########....##...
+    Below div contains default content which will be added first to the final rendered cards
+  -->
+  <div id="default-content" style="display: none;">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Notes</h5>
+        <pre>
+These are my notes.
+Feel free to add content here :) 
+        </pre>
+      </div>
     </div>
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Todo</h5>
+        <pre>
+[x] Todo 1
+[ ] Todo 2
+        </pre>
+      </div>
+    </div>
+  </div>
+  <!-- ^^ Add your notes/etc in card divs above -->
+  <nav class="navbar navbar-dark bg-dark">
+    <a class="navbar-brand" href="#">
+      🧙‍♂️ Magic Dashbard
+    </a>
+    <form class="form-inline my-2 my-lg-0">
+      <input class="form-control mr-sm-2" type="search" placeholder="Search" id="search" />
+    </form>
+  </nav>
+  <div class="container-fluid">
+    <div class="card-columns" id="links-container" style="margin-top: 10px;">
+      <!-- Don't add anything inside, we will replace it. -->
+    </div>
+  </div>
+  <script>
+    // self calling function to automatically call render()
+    // edit that function
+    (function () {
+      let input = $("#search").keypress(function (event) {
+        if (event.keyCode === 13) {
+          event.preventDefault();
+          render();
+        }
+      });
+      render();
+    })();
+  </script>
+</body>
 
-    <script>
-      // self calling function to automatically call main()
-      // edit that function
-      (function() {
-        let input = $("#search").keypress(function(event) {
-          if (event.keyCode === 13) {
-            event.preventDefault();
-            render();
-          }
-        }); 
-        render();
-      })();
-    </script>
-  </body>
 </html>
