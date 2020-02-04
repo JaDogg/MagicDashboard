@@ -32,6 +32,18 @@
         column-count: 4;
       }
     }
+
+    pre {
+      margin: 1em;
+      padding: 1em;
+      background-color: #eee;
+      white-space: pre-wrap;
+      font-size: smaller;
+    }
+
+    a {
+      color: #2e64fe;
+    }
   </style>
   <script>
     function withKeyword(keyword) {
@@ -65,10 +77,10 @@
         category = tokens[1].trim();
         tokens = tokens[2].split("==>").map(x => x.trim()).filter(x => !!x);
         if (tokens.length == 2) {
-          return [category, '<li><a href="' + tokens[1] + '">' + tokens[0] + '</a></li>'];
+          return [category, '<li><a href="' + tokens[1] + '" target="_blank">' + tokens[0] + '</a></li>'];
         } else if (tokens.length == 3) {
           return [category, '<li><a href="' + tokens[2] +
-            '"><img style="max-height:2em;" src="' + tokens[1] + '" alt="image for "/>' + tokens[0] + '</a></li>']
+            '" target="_blank"><img style="max-height:2em;" src="' + tokens[1] + '" alt="image for "/>' + tokens[0] + '</a></li>']
         }
         return null;
       }).filter(x => !!x);
@@ -89,6 +101,28 @@
       cardEntries.sort(sortByCategoryFirstChar);
       const cards = cardEntries.map(x => createLinksCard(x[0], x[1]));
       $(targetId).html(defaultHtml + cards.join(""));
+    }
+    function linkify(inputText) {
+      let replacedText, replacePattern1, replacePattern2, replacePattern3;
+      //URLs starting with http://, https://, or ftp://
+      replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
+      replacedText = inputText.replace(
+        replacePattern1,
+        '<a href="$1" target="_blank">$1</a>'
+      );
+      //URLs starting with "www." (without // before it, or it'd re-link the ones done above).
+      replacePattern2 = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
+      replacedText = replacedText.replace(
+        replacePattern2,
+        '$1<a href="http://$2" target="_blank">$2</a>'
+      );
+      //Change email addresses to mailto:: links.
+      replacePattern3 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim;
+      replacedText = replacedText.replace(
+        replacePattern3,
+        '<a href="mailto:$1">$1</a>'
+      );
+      return replacedText;
     }
     function render() {
       renderLinks("#links", "#links-container");
@@ -151,7 +185,7 @@
       <div class="card-body">
         <h5 class="card-title">Notes</h5>
         <pre>
-These are my notes.
+These are my notes. www.google.com
 Feel free to add content here :) 
         </pre>
       </div>
@@ -184,12 +218,19 @@ Feel free to add content here :)
     // self calling function to automatically call render()
     // edit that function
     (function () {
+      // On search - render again
       let input = $("#search").keypress(function (event) {
         if (event.keyCode === 13) {
           event.preventDefault();
           render();
         }
       });
+
+      // Convert all pre-tag https:// to links too
+      $("pre").each(function(index) {
+        $(this).html(linkify($(this).text()));
+      });
+
       render();
     })();
   </script>
